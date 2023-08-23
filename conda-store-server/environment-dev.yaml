@@ -22,7 +22,7 @@ dependencies:
   - uvicorn
   - fastapi
   - pydantic < 2.0
-  - pyyaml
+  - ruamel
   - traitlets
   - yarl
   - pyjwt

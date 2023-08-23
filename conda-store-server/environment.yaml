@@ -19,7 +19,7 @@ dependencies:
   - psycopg2
   - pymysql
   - requests
-  - pyyaml
+  - ruamel
   - uvicorn
   - fastapi
   - pydantic < 2.0

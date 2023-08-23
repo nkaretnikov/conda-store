@@ -23,7 +23,8 @@ name: test-env    # required
 prefix: null
 variables: null
 """
-    # no comments or extra whitespace
+    # Note: comments and empty lines are preserved. But the number of spaces
+    # before the first comment is different and null is not present.
     env_str_expected = """\
 channels:
 - conda-forge
@@ -32,26 +33,42 @@ dependencies:
 - pip:
   - nothing
 - ipykernel
+  # tests
 - pytest
-- requests
+
+- requests    # for app
+
+# other fields
 description: ''
-name: test-env
-prefix: null
-variables: null
+name: test-env    # required
+prefix:
+variables:
 """
     yaml = Yaml()
     env_yaml = yaml.load(env_str)
     env_str_actual = yaml.dump(env_yaml)
     assert env_str_actual == env_str_expected
 
-def test_yaml_load_error():
-    s = """\
+
+YAML_NO_KEY = """\
 :
 """
-    yaml = Yaml()
+
+
+def test_yaml_load_error():
+    # only an error with safe parsing
+    yaml = Yaml(typ='safe')
     with pytest.raises(YamlError) as e:
-        yaml.load(s)
+        yaml.load(YAML_NO_KEY)
     assert "failed to load yaml" in str(e.value)
+
+
+def test_yaml_load_no_error():
+    # not an error with rt parsing
+    yaml = Yaml(typ='rt')
+    res = yaml.load(YAML_NO_KEY)
+    assert res == {None: None}
+
 
 def test_yaml_dump_error():
     class Foo:

@@ -32,7 +32,7 @@ dependencies = [
   "sqlalchemy",
   "requests",
   "fastapi",
-  "pyyaml",
+  "ruamel.yaml",
   "redis",
   "pydantic<2",
   "minio",
