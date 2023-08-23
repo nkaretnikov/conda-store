@@ -3,7 +3,6 @@ import os
 
 from celery import Task, shared_task
 from celery.signals import worker_ready
-import yaml
 
 from conda_store_server.worker.app import CondaStoreWorker
 from conda_store_server import api, environment, utils, schema
@@ -15,6 +14,7 @@ from conda_store_server.build import (
     build_conda_docker,
     solve_conda_environment,
 )
+from conda_store_server.yaml import Yaml
 
 from sqlalchemy.orm import Session
 from celery.execute import send_task
@@ -61,9 +61,10 @@ def task_watch_paths(self):
         environment_paths = environment.discover_environments(self.worker.watch_paths)
         for path in environment_paths:
             with open(path) as f:
+                yaml = Yaml()
                 conda_store.register_environment(
                     db,
-                    specification=yaml.safe_load(f),
+                    specification=yaml.load(f),
                     namespace=settings.filesystem_namespace,
                     force=False,
                 )

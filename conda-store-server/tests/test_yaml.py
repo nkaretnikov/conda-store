@@ -1,6 +1,6 @@
-import yaml
-
 import pytest
+
+from conda_store_server.yaml import Yaml, YamlError
 
 
 def test_yaml_round_trip():
@@ -39,6 +39,26 @@ name: test-env
 prefix: null
 variables: null
 """
-    env_yaml = yaml.safe_load(env_str)
+    yaml = Yaml()
+    env_yaml = yaml.load(env_str)
     env_str_actual = yaml.dump(env_yaml)
     assert env_str_actual == env_str_expected
+
+def test_yaml_load_error():
+    s = """\
+:
+"""
+    yaml = Yaml()
+    with pytest.raises(YamlError) as e:
+        yaml.load(s)
+    assert "failed to load yaml" in str(e.value)
+
+def test_yaml_dump_error():
+    class Foo:
+        pass
+    data = Foo()  # cannot handle arbitrary objects
+    yaml = Yaml()
+    with pytest.raises(YamlError) as e:
+        res = yaml.dump(data)
+        print(res)
+    assert "failed to dump yaml" in str(e.value)

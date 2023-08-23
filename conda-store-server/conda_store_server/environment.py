@@ -1,9 +1,9 @@
 import pathlib
 
-import yaml
 import pydantic
 
 from conda_store_server import schema, conda_utils
+from conda_store_server.yaml import Yaml
 
 
 def validate_environment(specification):
@@ -17,7 +17,8 @@ def validate_environment(specification):
 def is_environment_file(filename):
     if str(filename).endswith(".yaml") or str(filename).endswith(".yml"):
         with filename.open() as f:
-            return validate_environment(yaml.safe_load(f))
+            yaml = Yaml()
+            return validate_environment(yaml.load(f))
     else:
         return False
 

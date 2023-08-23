@@ -11,9 +11,10 @@ import datetime
 import tempfile
 import pathlib
 
-import yaml
 import yarl
 import requests
+
+from conda_store_server.yaml import Yaml
 
 
 def normalize_channel_name(channel_alias, channel):
@@ -68,7 +69,8 @@ def conda_lock(specification: "CondaSpecification", conda_exe: str = "mamba"):  
             raise ValueError(e.output)
 
         with lockfile_path.open() as f:
-            lockfile = yaml.safe_load(f)
+            yaml = Yaml()
+            lockfile = yaml.load(f)
 
     conda_packages = []
     pip_packages = []

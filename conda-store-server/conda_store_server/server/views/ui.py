@@ -3,11 +3,11 @@ from typing import Optional
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-import yaml
 
 from conda_store_server import api
 from conda_store_server.server import dependencies
 from conda_store_server.schema import Permissions
+from conda_store_server.yaml import Yaml
 
 router_ui = APIRouter(tags=["ui"])
 
@@ -118,6 +118,7 @@ async def ui_get_environment(
             status_code=404,
         )
 
+    yaml = Yaml()
     context = {
         "request": request,
         "environment": environment,
@@ -156,6 +157,7 @@ async def ui_edit_environment(
             status_code=404,
         )
 
+    yaml = Yaml()
     context = {
         "request": request,
         "environment": environment,
@@ -195,6 +197,7 @@ async def ui_get_build(
         require=True,
     )
 
+    yaml = Yaml()
     context = {
         "request": request,
         "build": build,

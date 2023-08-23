@@ -3,11 +3,11 @@ import pathlib
 import datetime
 
 import pytest
-import yaml
 from fastapi.testclient import TestClient
 
 from conda_store_server import app, schema, dbutil, utils, testing, api
 from conda_store_server.server import app as server_app
+from conda_store_server.yaml import Yaml
 
 
 @pytest.fixture
@@ -170,7 +170,8 @@ def simple_specification_with_pip():
 @pytest.fixture
 def simple_conda_lock():
     with (pathlib.Path(__file__).parent / "assets/conda-lock.zlib.yaml").open() as f:
-        return yaml.safe_load(f)
+        yaml = Yaml()
+        return yaml.load(f)
 
 
 @pytest.fixture

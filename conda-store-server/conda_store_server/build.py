@@ -8,10 +8,10 @@ import traceback
 import json
 import collections
 
-import yaml
 from sqlalchemy.orm import Session
 
 from conda_store_server import conda_utils, orm, utils, schema, action, api
+from conda_store_server.yaml import Yaml
 
 
 def append_to_logs(db: Session, conda_store, build, logs: typing.Union[str, bytes]):
@@ -257,6 +257,7 @@ def build_conda_env_export(db: Session, conda_store, build: orm.Build):
         + "\n::endgroup::\n",
     )
 
+    yaml = Yaml()
     conda_prefix_export = yaml.dump(context.result).encode("utf-8")
 
     conda_store.storage.set(

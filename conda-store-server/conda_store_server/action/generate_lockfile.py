@@ -2,9 +2,9 @@ import pathlib
 import typing
 import json
 
-import yaml
 
 from conda_store_server import schema, conda_utils, action
+from conda_store_server.yaml import Yaml
 
 from conda_lock.conda_lock import run_lock
 
@@ -30,4 +30,5 @@ def action_solve_lockfile(
     )
 
     with lockfile_filename.open() as f:
-        return yaml.safe_load(f)
+        yaml = Yaml()
+        return yaml.load(f)

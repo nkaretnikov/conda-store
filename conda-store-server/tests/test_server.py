@@ -1,9 +1,9 @@
-import yaml
 import json
 
 import pytest
 
 from conda_store_server import __version__, schema
+from conda_store_server.yaml import Yaml
 
 
 def test_api_version_unauth(testclient):
@@ -283,7 +283,8 @@ def test_api_get_build_one_auth_yaml(testclient, seed_conda_store, authenticate)
     response = testclient.get("api/v1/build/3/yaml/")
     response.raise_for_status()
 
-    environment_yaml = yaml.safe_load(response.content.decode("utf-8"))
+    yaml = Yaml()
+    environment_yaml = yaml.load(response.content.decode("utf-8"))
     assert {"name", "channels", "dependencies"} <= environment_yaml.keys()
 
 

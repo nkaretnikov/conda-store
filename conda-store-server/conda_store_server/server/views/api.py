@@ -2,7 +2,6 @@ from typing import List, Dict, Optional, Any
 import datetime
 
 import pydantic
-import yaml
 from fastapi import APIRouter, Request, Depends, HTTPException, Query, Body
 from fastapi.responses import RedirectResponse, PlainTextResponse
 from sqlalchemy.orm import Session
@@ -10,6 +9,7 @@ from sqlalchemy.orm import Session
 from conda_store_server import api, orm, schema, utils, __version__
 from conda_store_server.server import dependencies
 from conda_store_server.schema import Permissions
+from conda_store_server.yaml import Yaml, YamlError
 
 
 router_api = APIRouter(
@@ -560,9 +560,10 @@ async def api_post_specification(
         permissions.add(Permissions.NAMESPACE_CREATE)
 
     try:
-        specification = yaml.safe_load(specification)
+        yaml = Yaml()
+        specification = yaml.load(specification)
         specification = schema.CondaSpecification.parse_obj(specification)
-    except yaml.error.YAMLError:
+    except YamlError:
         raise HTTPException(status_code=400, detail="Unable to parse. Invalid YAML")
     except pydantic.ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
