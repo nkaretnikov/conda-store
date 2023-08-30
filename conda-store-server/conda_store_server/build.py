@@ -109,11 +109,12 @@ def build_conda_environment(db: Session, conda_store, build):
 
     """
     set_build_started(db, build)
+    start_time = datetime.datetime.utcnow()
     append_to_logs(
         db,
         conda_store,
         build,
-        f"starting build of conda environment {datetime.datetime.utcnow()} UTC\n",
+        f"starting build of conda environment {start_time} UTC\n",
     )
 
     settings = conda_store.get_settings(
@@ -202,6 +203,14 @@ def build_conda_environment(db: Session, conda_store, build):
         build.size = context.result["disk_usage"]
 
         set_build_completed(db, conda_store, build)
+        finish_time = datetime.datetime.utcnow()
+        time_delta = finish_time - start_time
+        append_to_logs(
+            db,
+            conda_store,
+            build,
+            f"finished build of conda environment {finish_time} UTC (build took {time_delta})\n",
+        )
     except subprocess.CalledProcessError as e:
         conda_store.log.exception(e)
         append_to_logs(db, conda_store, build, e.output)
