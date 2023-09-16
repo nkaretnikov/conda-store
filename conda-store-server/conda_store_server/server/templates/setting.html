@@ -49,6 +49,100 @@
     </div>
 </div>
 
+<div class="card my-2" id="user-settings">
+    <div class="card-body">
+        <h5 class="card-title">
+            <h3>Namespace User Settings</h3>
+        </h5>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th scope="col">User</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                <tr>
+                    <td>Eve</td>
+                    <td>
+                        <div class="dropdown show">
+                            <a class="btn btn-secondary btn-sm dropdown-toggle" role="button" id="dropdownMenuLink1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Viewer
+                            </a>
+
+                            <div class="dropdown-menu" aria-labelledby="dropdownMenuLink1">
+                                <a class="dropdown-item" onclick="handle_viewer(this, 'dropdownMenuLink1')">Viewer</a>
+                                <a class="dropdown-item" onclick="handle_developer(this, 'dropdownMenuLink1')">Developer</a>
+                                <a class="dropdown-item" onclick="handle_admin(this, 'dropdownMenuLink1')">Admin</a>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div id="actions-build" class="btn-group" role="group" aria-label="User actions">
+                            <button type="button" data-action="refresh" class="btn btn-primary mb-2">
+                                <ion-icon name="checkmark" role="img" class="md hydrated" aria-label="refresh"></ion-icon>
+                            </button>
+                            <!-- XXX: hardcoded data-user below -->
+                            <!-- XXX: these needs to use templates to get DB values -->
+                            <button type="button" data-toggle="modal" data-target="#deleteModal" data-user="Eve" class="btn btn-primary mb-2">
+                                <ion-icon name="trash" role="img" class="md hydrated" aria-label="trash"></ion-icon>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>
+                        <input type="text" class="form-control" placeholder="New User">
+                    </td>
+                    <td>
+                        <div class="dropdown show">
+                            <a class="btn btn-secondary btn-sm dropdown-toggle" role="button" id="dropdownMenuLink2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Viewer
+                            </a>
+
+                            <div class="dropdown-menu" aria-labelledby="dropdownMenuLink2">
+                                <a class="dropdown-item" onclick="handle_viewer(this, 'dropdownMenuLink2')">Viewer</a>
+                                <a class="dropdown-item" onclick="handle_developer(this, 'dropdownMenuLink2')">Developer</a>
+                                <a class="dropdown-item" onclick="handle_admin(this, 'dropdownMenuLink2')">Admin</a>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <button type="button" data-action="refresh" data-id="2" class="btn btn-primary mb-2">
+                            <ion-icon name="add" role="img" class="md hydrated" aria-label="refresh"></ion-icon>
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true"> -->
+<div class="modal" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Action</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <script>
  function bannerMessage(message) {
      let banner = document.querySelector('#message');
@@ -79,11 +173,42 @@
      }
  }
 
+ // XXX: connect this to DB, check all IDs
+ // XXX: verify a11y
+ function handle_viewer(item, id)
+ {
+     console.log("viewer");  // XXX: remove
+     document.getElementById(id).innerHTML = item.innerHTML;
+ }
+
+ function handle_developer(item, id)
+ {
+     console.log("developer");  // XXX: remove
+     document.getElementById(id).innerHTML = item.innerHTML;
+ }
+
+ function handle_admin(item, id)
+ {
+     console.log("admin");  // XXX: remove
+     document.getElementById(id).innerHTML = item.innerHTML;
+ }
+
  var globalSettingsForm = document.querySelector('#global-settings-form')
  var environmentSettingsForm = document.querySelector('#environment-settings-form')
 
  globalSettingsForm.addEventListener("submit", updateSettings);
  environmentSettingsForm.addEventListener("submit", updateSettings);
+
+// Note: only works via jQuery's 'on'
+$('#deleteModal').on('show.bs.modal', function(event) {
+// XXX: replace hardcoded data-user in html above
+  var button = $(event.relatedTarget)
+  console.log(button);
+  var user = button.data('user')
+  var modal = $(this)
+  modal.find('.modal-body').text('Delete user ' + user + ' from namespace?')
+})
+
 </script>
 
 {% endblock %}
