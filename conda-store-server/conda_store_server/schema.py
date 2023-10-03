@@ -95,11 +95,16 @@ class CondaPackage(BaseModel):
 
 class NamespaceRoleMapping(BaseModel):
     id: int
-    entity: str
+    namespace: str
+    other_namespace: str
     role: str
 
     class Config:
         orm_mode = True
+
+    @classmethod
+    def from_list(cls, lst):
+        return cls(**{k: v for k, v in zip(cls.__fields__.keys(), lst)})
 
 
 class Namespace(BaseModel):
@@ -613,6 +618,28 @@ class APIListNamespace(APIPaginatedResponse):
 # GET /api/v1/namespace/{name}
 class APIGetNamespace(APIResponse):
     data: Namespace
+
+
+# GET /api/v1/namespace/{name}/role
+class APIGetNamespaceRole(BaseModel):
+    other_namespace: str
+
+
+# POST /api/v1/namespace/{name}/role
+class APIPostNamespaceRole(BaseModel):
+    other_namespace: str
+    role: str
+
+
+# PUT /api/v1/namespace/{name}/role
+class APIPutNamespaceRole(BaseModel):
+    other_namespace: str
+    role: str
+
+
+# DELETE /api/v1/namespace/{name}/role
+class APIDeleteNamespaceRole(BaseModel):
+    other_namespace: str
 
 
 # GET /api/v1/environment

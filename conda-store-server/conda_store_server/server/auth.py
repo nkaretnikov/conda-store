@@ -8,12 +8,12 @@ from typing import Optional
 import jwt
 import requests
 import yarl
-from conda_store_server import orm, schema, utils
+from conda_store_server import api, orm, schema, utils
 from conda_store_server.server import dependencies
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from sqlalchemy import and_, or_, text
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import sessionmaker
 from traitlets import Bool, Callable, Dict, Instance, Type, Unicode, Union, default
 from traitlets.config import LoggingConfigurable
@@ -164,7 +164,7 @@ class RBACAuthorizationBackend(LoggingConfigurable):
         )
         return (arn_1_matches_arn_2 and arn_2_matches_arn_1) or arn_2_matches_arn_1
 
-    def get_entity_bindings(self, entity):
+    def get_entity_bindings(self, entity: schema.AuthenticationToken):
         authenticated = entity is not None
         entity_role_bindings = {} if entity is None else entity.role_bindings
 
@@ -188,14 +188,17 @@ class RBACAuthorizationBackend(LoggingConfigurable):
             permissions = permissions | self.role_mappings[role]
         return permissions
 
-    def get_entity_binding_permissions(self, entity):
+    def convert_namespace_to_entity_arn(self, namespace):
+        return f"{namespace}/*"
+
+    def get_entity_binding_permissions(self, entity: schema.AuthenticationToken):
         entity_bindings = self.get_entity_bindings(entity)
         return {
             entity_arn: self.convert_roles_to_permissions(roles=entity_roles)
             for entity_arn, entity_roles in entity_bindings.items()
         }
 
-    def get_entity_permissions(self, entity, arn: str):
+    def get_entity_permissions(self, entity: schema.AuthenticationToken, arn: str):
         """Get set of permissions for given ARN given AUTHENTICATION
         state and entity_bindings
 
@@ -233,31 +236,33 @@ class RBACAuthorizationBackend(LoggingConfigurable):
                 return False
         return True
 
-    def authorize(self, entity, arn, required_permissions):
+    def authorize(
+        self, entity: schema.AuthenticationToken, arn: str, required_permissions
+    ):
         return required_permissions <= self.get_entity_permissions(
             entity=entity, arn=arn
         )
 
-    def database_role_bindings(self, entity):
+    def database_role_bindings(self, entity: schema.AuthenticationToken):
         with self.authentication_db() as db:
-            result = db.execute(
-                text(
-                    """
-                    SELECT nrm.entity, nrm.role
-                    FROM namespace n
-                    RIGHT JOIN namespace_role_mapping nrm ON nrm.namespace_id = n.id
-                    WHERE n.name = :primary_namespace
-                    """
-                ),
-                {"primary_namespace": entity.primary_namespace},
-            )
-            raw_role_mappings = result.mappings().all()
+            # Must have the same format as authenticated_role_bindings:
+            # {
+            #     "default/*": {"viewer"},
+            #     "filesystem/*": {"viewer"},
+            # }
+            res = defaultdict(set)
 
-            db_role_mappings = defaultdict(set)
-            for row in raw_role_mappings:
-                db_role_mappings[row["entity"]].add(row["role"])
+            # FIXME: Remove try-except.
+            # Used in tests to check default permissions without populating the
+            # DB, which raises an exception since namespace is not found.
+            try:
+                roles = api.get_other_namespace_roles(db, name=entity.primary_namespace)
+            except Exception:
+                return res
 
-        return db_role_mappings
+            for x in roles:
+                res[self.convert_namespace_to_entity_arn(x.namespace)].add(x.role)
+            return res
 
 
 class Authentication(LoggingConfigurable):

@@ -11,6 +11,7 @@ ordering for tests.
 import asyncio
 import json
 import uuid
+from functools import partial
 from typing import List
 
 import aiohttp
@@ -541,95 +542,6 @@ def test_create_namespace_auth(testclient):
     assert r.data.name == namespace
 
 
-def test_update_namespace_noauth(testclient):
-    namespace = f"filesystem"
-    # namespace = f"pytest-{uuid.uuid4()}"
-
-    test_role_mappings = {
-        f"{namespace}/*": ["viewer"],
-        f"{namespace}/admin": ["admin"],
-        f"{namespace}/test": ["admin", "viewer", "developer"],
-    }
-
-    # Updates the metadata only
-    response = testclient.put(
-        f"api/v1/namespace/{namespace}/",
-        json={
-            "metadata": {"test_key1": "test_value1", "test_key2": "test_value2"},
-        },
-    )
-    assert response.status_code == 403
-
-    r = schema.APIResponse.parse_obj(response.json())
-    assert r.status == schema.APIStatus.ERROR
-
-    # Updates the role mappings only
-    response = testclient.put(
-        f"api/v1/namespace/{namespace}", json={"role_mappings": test_role_mappings}
-    )
-    assert response.status_code == 403
-
-    r = schema.APIResponse.parse_obj(response.json())
-    assert r.status == schema.APIStatus.ERROR
-
-    # Updates both the metadata and the role mappings
-    response = testclient.put(
-        f"api/v1/namespace/{namespace}",
-        json={
-            "metadata": {"test_key1": "test_value1", "test_key2": "test_value2"},
-            "role_mappings": test_role_mappings,
-        },
-    )
-    assert response.status_code == 403
-
-    r = schema.APIResponse.parse_obj(response.json())
-    assert r.status == schema.APIStatus.ERROR
-
-
-def test_update_namespace_auth(testclient):
-    namespace = f"filesystem"
-
-    testclient.login()
-
-    test_role_mappings = {
-        f"{namespace}/*": ["viewer"],
-        f"{namespace}/admin": ["admin"],
-        f"{namespace}/test": ["admin", "viewer", "developer"],
-    }
-
-    # Updates both the metadata and the role mappings
-    response = testclient.put(
-        f"api/v1/namespace/{namespace}",
-        json={
-            "metadata": {"test_key1": "test_value1", "test_key2": "test_value2"},
-            "role_mappings": test_role_mappings,
-        },
-    )
-
-    r = schema.APIResponse.parse_obj(response.json())
-    assert r.status == schema.APIStatus.OK
-
-    # Updates the metadata only
-    response = testclient.put(
-        f"api/v1/namespace/{namespace}/",
-        json={
-            "metadata": {"test_key1": "test_value1", "test_key2": "test_value2"},
-        },
-    )
-    response.raise_for_status()
-
-    r = schema.APIResponse.parse_obj(response.json())
-    assert r.status == schema.APIStatus.OK
-
-    # Updates the role mappings only
-    response = testclient.put(
-        f"api/v1/namespace/{namespace}", json={"role_mappings": test_role_mappings}
-    )
-
-    r = schema.APIResponse.parse_obj(response.json())
-    assert r.status == schema.APIStatus.OK
-
-
 def test_create_get_delete_namespace_auth(testclient):
     namespace = f"pytest-delete-namespace-{uuid.uuid4()}"
 
@@ -658,6 +570,124 @@ def test_create_get_delete_namespace_auth(testclient):
 
     r = schema.APIResponse.parse_obj(response.json())
     assert r.status == schema.APIStatus.ERROR
+
+
+def _crud_common(testclient, auth, method, route, json=None, data_pred=None):
+    if auth:
+        testclient.login()
+
+    if json is not None:
+        response = method(route, json=json)
+    else:
+        response = method(route)
+
+    if auth:
+        response.raise_for_status()
+    else:
+        assert response.status_code == 403
+
+    r = schema.APIResponse.parse_obj(response.json())
+    if auth:
+        assert r.status == schema.APIStatus.OK
+        if data_pred is None:
+            assert r.data is None
+        else:
+            assert data_pred(r.data) is True
+    else:
+        assert r.status == schema.APIStatus.ERROR
+
+
+@pytest.mark.parametrize("auth", [True, False])
+def test_update_namespace_metadata(testclient, auth):
+    namespace = f"filesystem"
+    make_request = partial(_crud_common, testclient=testclient, auth=auth)
+
+    make_request(
+        method=testclient.put,
+        route=f"api/v1/namespace/{namespace}/metadata",
+        json={"test_key1": "test_value1", "test_key2": "test_value2"},
+    )
+
+
+@pytest.mark.parametrize("auth", [True, False])
+def test_crud_namespace_roles(testclient, auth):
+    other_namespace = f"pytest-{uuid.uuid4()}"
+    namespace = f"filesystem"
+    make_request = partial(_crud_common, testclient=testclient, auth=auth)
+
+    # Deletes roles to start with a clean state
+    make_request(
+        method=testclient.delete,
+        route=f"api/v1/namespace/{namespace}/roles",
+    )
+
+    # Creates new namespace
+    make_request(
+        method=testclient.post,
+        route=f"api/v1/namespace/{other_namespace}",
+    )
+
+    # Creates role for 'other_namespace' with access to 'namespace'
+    make_request(
+        method=testclient.post,
+        route=f"api/v1/namespace/{namespace}/role",
+        json={
+            "other_namespace": other_namespace,
+            "role": "developer"
+        },
+    )
+
+    # Reads created role
+    make_request(
+        method=testclient.get,
+        route=f"api/v1/namespace/{namespace}/role",
+        json={
+            "other_namespace": other_namespace,
+        },
+        data_pred=lambda data: (
+            data['namespace'] == 'filesystem' and
+            data['other_namespace'] == other_namespace and
+            data['role'] == 'developer'
+        ),
+    )
+
+    # Updates created role
+    make_request(
+        method=testclient.put,
+        route=f"api/v1/namespace/{namespace}/role",
+        json={
+            "other_namespace": other_namespace,
+            "role": "admin"
+        },
+    )
+
+    # Reads updated roles
+    make_request(
+        method=testclient.get,
+        route=f"api/v1/namespace/{namespace}/roles",
+        data_pred=lambda data: (
+            data[0]['namespace'] == 'filesystem' and
+            data[0]['other_namespace'] == other_namespace and
+            data[0]['role'] == 'admin' and
+            len(data) == 1
+        ),
+    )
+
+    # Deletes created role
+    make_request(
+        method=testclient.delete,
+        route=f"api/v1/namespace/{namespace}/role",
+        json={
+            "other_namespace": other_namespace,
+        },
+    )
+
+    # Reads roles to check if deleted
+    make_request(
+        method=testclient.get,
+        route=f"api/v1/namespace/{namespace}/roles",
+        data_pred=lambda data: data == [],
+    )
 
 
 def test_update_environment_build_unauth(testclient):

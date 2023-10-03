@@ -54,8 +54,6 @@ class Namespace(Base):
 
     metadata_ = Column(JSON, default=dict, nullable=True)
 
-    role_mappings = relationship("NamespaceRoleMapping", back_populates="namespace")
-
 
 class NamespaceRoleMapping(Base):
     """Mapping between roles and namespaces"""
@@ -63,29 +61,29 @@ class NamespaceRoleMapping(Base):
     __tablename__ = "namespace_role_mapping"
 
     id = Column(Integer, primary_key=True)
+    # Provides access to this namespace
     namespace_id = Column(Integer, ForeignKey("namespace.id"), nullable=False)
-    namespace = relationship(Namespace, back_populates="role_mappings")
+    namespace = relationship(Namespace, foreign_keys=[namespace_id])
 
-    # arn e.g. <namespace>/<name> like `quansight-*/*` or `quansight-devops/*`
-    # The entity must match with ARN_ALLOWED defined in schema.py
-    entity = Column(Unicode(255), nullable=False)
+    # ... for other namespace
+    other_namespace_id = Column(Integer, ForeignKey("namespace.id"), nullable=False)
+    other_namespace = relationship(Namespace, foreign_keys=[other_namespace_id])
 
-    # e.g. viewer
+    # ... with this role, like 'viewer'
     role = Column(Unicode(255), nullable=False)
-
-    @validates("entity")
-    def validate_entity(self, key, entity):
-        if not ARN_ALLOWED_REGEX.match(entity):
-            raise ValueError(f"invalid entity={entity}")
-
-        return entity
 
     @validates("role")
     def validate_role(self, key, role):
         if role not in ["admin", "viewer", "developer"]:
-            raise ValueError(f"invalid entity={role}")
-
+            raise ValueError(f"invalid role={role}")
         return role
+
+    __table_args__ = (
+        # Ensures no duplicates can be added with this combination of fields.
+        # Note: this doesn't add role because role needs to be unique for each
+        # pair of ids.
+        UniqueConstraint("namespace_id", "other_namespace_id", name="_uc"),
+    )
 
 
 class Specification(Base):
